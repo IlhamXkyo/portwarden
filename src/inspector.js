@@ -1,5 +1,4 @@
 import { execSync } from 'node:child_process';
-import os from 'node:os';
 import { formatBytes } from './formatter.js';
 
 export function validatePort(port) {
@@ -19,7 +18,7 @@ export function isSystemPid(pid) {
 
 export function getListeningPortsWindows() {
   try {
-    const output = execSync('netstat -ano -p tcp', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+    const output = execSync('netstat -ano', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
     const lines = output.split('\n');
     const portMap = new Map();
 

@@ -13,38 +13,66 @@ export function killPid(pid, { force = false } = {}) {
   if (process.platform === 'win32') {
     const flag = force ? '/F /T' : '';
     try {
-      execSync(`taskkill ${flag} /PID ${pid}`, { stdio: ['pipe', 'pipe', 'ignore'] });
-      return true;
+      execSync(`taskkill ${flag} /PID ${pid}`, { stdio: ['pipe', 'pipe', 'pipe'] });
+      return { success: true };
     } catch (err) {
-      // If graceful failed, fallback to force kill
+      const stderr = err.stderr ? err.stderr.toString() : '';
+      if (stderr.toLowerCase().includes('access is denied')) {
+        return {
+          success: false,
+          permissionDenied: true,
+          error: `Access denied. Administrator privileges required to terminate PID ${pid}.`,
+        };
+      }
+
       if (!force) {
         try {
-          execSync(`taskkill /F /T /PID ${pid}`, { stdio: ['pipe', 'pipe', 'ignore'] });
-          return true;
-        } catch {
-          // Process might have already exited
+          execSync(`taskkill /F /T /PID ${pid}`, { stdio: ['pipe', 'pipe', 'pipe'] });
+          return { success: true };
+        } catch (forceErr) {
+          const forceStderr = forceErr.stderr ? forceErr.stderr.toString() : '';
+          if (forceStderr.toLowerCase().includes('access is denied')) {
+            return {
+              success: false,
+              permissionDenied: true,
+              error: `Access denied. Administrator privileges required to terminate PID ${pid}.`,
+            };
+          }
         }
       }
-      return false;
+      return { success: false, error: stderr.trim() || 'Failed to terminate process.' };
     }
   }
 
   try {
     process.kill(pid, force ? 'SIGKILL' : 'SIGTERM');
-    return true;
+    return { success: true };
   } catch (err) {
     if (err.code === 'ESRCH') {
-      return true;
+      return { success: true };
+    }
+    if (err.code === 'EPERM') {
+      return {
+        success: false,
+        permissionDenied: true,
+        error: `Permission denied. Root / sudo privileges required to terminate PID ${pid}.`,
+      };
     }
     if (!force) {
       try {
         process.kill(pid, 'SIGKILL');
-        return true;
-      } catch {
-        return false;
+        return { success: true };
+      } catch (forceErr) {
+        if (forceErr.code === 'EPERM') {
+          return {
+            success: false,
+            permissionDenied: true,
+            error: `Permission denied. Root / sudo privileges required to terminate PID ${pid}.`,
+          };
+        }
       }
     }
-    return false;
+    return { success: false, error: err.message };
   }
 }
 
@@ -84,7 +112,18 @@ export async function freePort(port, options = {}) {
   }
 
   const startTime = Date.now();
-  killPid(info.pid, { force });
+  const killResult = killPid(info.pid, { force });
+
+  if (!killResult.success && killResult.permissionDenied) {
+    return {
+      success: false,
+      port,
+      pid: info.pid,
+      processName: info.processName,
+      permissionDenied: true,
+      error: killResult.error,
+    };
+  }
 
   const intervalMs = 150;
   while (Date.now() - startTime < timeoutMs) {

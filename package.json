@@ -17,6 +17,14 @@
     "test": "node --test test/*.test.js",
     "start": "node bin/portwarden.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IlhamXkyo/portwarden.git"
+  },
+  "bugs": {
+    "url": "https://github.com/IlhamXkyo/portwarden/issues"
+  },
+  "homepage": "https://github.com/IlhamXkyo/portwarden#readme",
   "keywords": [
     "port",
     "eaddrinuse",

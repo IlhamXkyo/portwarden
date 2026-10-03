@@ -1,5 +1,5 @@
 import net from 'node:net';
-import { validatePort, inspectPort } from './inspector.js';
+import { validatePort, inspectPort, getAllListeningPorts } from './inspector.js';
 
 function checkPortAvailability(port, host = '0.0.0.0') {
   return new Promise((resolve) => {
@@ -31,7 +31,13 @@ export async function findAvailablePort(startPort = 3000, maxPort = 65535, host 
     throw new Error(`startPort (${start}) cannot be greater than maxPort (${end}).`);
   }
 
+  const occupiedMap = getAllListeningPorts();
+
   for (let port = start; port <= end; port++) {
+    if (occupiedMap.has(port)) {
+      continue;
+    }
+
     const isAvailable = await checkPortAvailability(port, host);
     if (isAvailable) {
       return port;

@@ -1,5 +1,5 @@
 import readline from 'node:readline';
-import { inspectPorts, validatePort } from './inspector.js';
+import { inspectPorts } from './inspector.js';
 import { freePorts } from './killer.js';
 import { scanDevPorts, sweepDevPorts } from './dev-ports.js';
 import { findAvailablePort, waitForPort } from './finder.js';
@@ -109,15 +109,15 @@ export async function runCli(argv = process.argv) {
   const [cmd, ...rest] = positionals;
 
   try {
-    // Check if first positional is a number -> default to inspect
+    // If the first positional is an integer or looks like a port list
     if (/^\d+$/.test(cmd)) {
-      const ports = [cmd, ...rest].map(Number);
+      const ports = [cmd, ...rest];
       return await handleInspect(ports, flags);
     }
 
     switch (cmd.toLowerCase()) {
       case 'inspect': {
-        const ports = rest.map(Number);
+        const ports = rest;
         if (ports.length === 0) {
           console.error(c.red('Error: Please provide at least one port number to inspect.'));
           return 1;
@@ -127,7 +127,7 @@ export async function runCli(argv = process.argv) {
 
       case 'free':
       case 'kill': {
-        const ports = rest.map(Number);
+        const ports = rest;
         if (ports.length === 0) {
           console.error(c.red('Error: Please provide at least one port number to free.'));
           return 1;
@@ -144,12 +144,12 @@ export async function runCli(argv = process.argv) {
       }
 
       case 'next': {
-        const start = rest[0] ? Number(rest[0]) : 3000;
+        const start = rest[0] ? rest[0] : 3000;
         return await handleNext(start, flags);
       }
 
       case 'wait': {
-        const port = Number(rest[0]);
+        const port = rest[0];
         if (!port) {
           console.error(c.red('Error: Please specify port to wait for.'));
           return 1;
@@ -230,6 +230,9 @@ async function handleFree(ports, flags) {
       console.log(
         c.green(`✓ Port ${res.port} freed! Terminated ${c.bold(res.processName)} (PID ${res.pid}) in ${res.durationMs}ms.`)
       );
+    } else if (res.permissionDenied) {
+      console.log(c.red(`✗ Port ${res.port}: ${res.error}`));
+      console.log(c.yellow(`  Tip: Try running the command in an elevated prompt (Run as Administrator or sudo).`));
     } else {
       console.log(c.red(`✗ Failed to free port ${res.port}: ${res.error}`));
     }
@@ -311,6 +314,9 @@ async function handleSweep(flags) {
       console.log(c.yellow(`[DRY-RUN] Port ${res.port}: would kill ${res.processName} (PID ${res.pid})`));
     } else if (res.success) {
       console.log(c.green(`✓ Port ${res.port}: terminated ${res.processName} (PID ${res.pid})`));
+    } else if (res.permissionDenied) {
+      console.log(c.red(`✗ Port ${res.port}: ${res.error}`));
+      console.log(c.yellow(`  Tip: Try running the command in an elevated prompt (Run as Administrator or sudo).`));
     } else {
       console.log(c.red(`✗ Port ${res.port}: ${res.error}`));
     }

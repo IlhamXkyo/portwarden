@@ -12,6 +12,7 @@ test('validatePort accepts valid ports and rejects invalid ones', () => {
   assert.throws(() => validatePort(70000), /Invalid port number/);
   assert.throws(() => validatePort(-1), /Invalid port number/);
   assert.throws(() => validatePort('invalid'), /Invalid port number/);
+  assert.throws(() => validatePort(3000.5), /Invalid port number/);
 });
 
 test('isSystemPid detects protected system PIDs', () => {
@@ -22,7 +23,7 @@ test('isSystemPid detects protected system PIDs', () => {
   assert.equal(isSystemPid(99999), false);
 });
 
-test('inspectPort identifies an actively listening socket', async () => {
+test('inspectPort identifies an actively listening IPv4 socket', async () => {
   const server = net.createServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const assignedPort = server.address().port;
@@ -35,5 +36,28 @@ test('inspectPort identifies an actively listening socket', async () => {
     assert.equal(typeof info.processName, 'string');
   } finally {
     await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('inspectPort identifies an actively listening IPv6 socket', async () => {
+  const server = net.createServer();
+  try {
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '::', resolve);
+    });
+    const assignedPort = server.address().port;
+
+    const info = inspectPort(assignedPort);
+    assert.equal(info.port, assignedPort);
+    assert.equal(info.occupied, true);
+    assert.equal(info.pid, process.pid);
+  } catch (err) {
+    // Skip if IPv6 is not configured on the host
+    if (err.code !== 'EADDRNOTAVAIL') {
+      throw err;
+    }
+  } finally {
+    await new Promise((resolve) => server.close(() => resolve()));
   }
 });
