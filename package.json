@@ -1,0 +1,35 @@
+{
+  "name": "portwarden",
+  "version": "1.0.0",
+  "description": "Developer port collision inspector, zombie process terminator, and dev port manager",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "portwarden": "bin/portwarden.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "node bin/portwarden.js"
+  },
+  "keywords": [
+    "port",
+    "eaddrinuse",
+    "kill-port",
+    "port-manager",
+    "zombie-processes",
+    "developer-tool",
+    "cli",
+    "process-killer"
+  ],
+  "author": "ilhamxkyo",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
